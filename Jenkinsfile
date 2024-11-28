@@ -17,7 +17,15 @@ pipeline {
         component = 'backend'
     }
 
+
     stages {
+        stage('Install Dependencies') {
+            steps {
+               
+                sh 'npm install'
+                
+            }
+        }
         stage('Docker build') {
             
             steps {
