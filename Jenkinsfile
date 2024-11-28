@@ -5,27 +5,56 @@ pipeline {
     options{
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
-       
+        
+    }
+    parameters{
+        booleanParam(name: 'deploy', defaultValue: false, description: 'Select to deploy or not')
     }
     environment {
         DEBUG = 'true'
         appVersion = '' // this will become global, we can use across pipeline
         region = 'us-east-1'
-        account_id = '905418172435'
+        account_id = '315069654700'
         project = 'expense'
-        environment = ''
+        environment = 'dev'
         component = 'backend'
     }
 
-
     stages {
-        stage('Install Dependencies') {
+        stage('Read the version') {
             steps {
-               
-                sh 'npm install'
-                
+                script{
+                    def packageJson = readJSON file: 'package.json'
+                    appVersion = packageJson.version
+                    echo "App version: ${appVersion}"
+                }
             }
         }
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        /* stage('SonarQube analysis') {
+            environment {
+                SCANNER_HOME = tool 'sonar-6.0' //scanner config
+            }
+            steps {
+                // sonar server injection
+                withSonarQubeEnv('sonar-6.0') {
+                    sh '$SCANNER_HOME/bin/sonar-scanner'
+                    //generic scanner, it automatically understands the language and provide scan results
+                }
+            }
+        }
+
+        stage('SQuality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        } */
         stage('Docker build') {
             
             steps {
@@ -42,17 +71,15 @@ pipeline {
                 }
             }
         }
-        
         stage('Deploy'){
             when {
                 expression { params.deploy }
             }
-            // parameters passing
             steps{
                 build job: 'backend-cd', parameters: [
                     string(name: 'version', value: "$appVersion"),
                     string(name: 'ENVIRONMENT', value: "dev"),
-                ], wait: false
+                ], wait: true
             }
         }
     }
